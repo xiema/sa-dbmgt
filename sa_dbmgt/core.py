@@ -40,6 +40,7 @@ class DatabaseHandler:
 
     def close(self):
         self.engine.dispose()
+        self.session.remove()
         self.engine = None
         self.session = None
         self.connected = False

@@ -1,0 +1,5 @@
+.idea
+
+.trash
+tests/tmp
+tests/data.json

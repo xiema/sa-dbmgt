@@ -15,17 +15,20 @@ def create_base(model_base=None):
         __reprstr__ = None
 
         def __init__(self, **kwargs):
-            for key, column in type(self).__table__.columns.items():
-                assert isinstance(column, Column)
+            for key in type(self).__table__.columns.keys():
                 if key in kwargs:
-                    if isinstance(kwargs[key], column.type.python_type) or kwargs[key] is None:
-                        setattr(self, key, kwargs[key])
-                    else:
-                        raise TypeError(f"{key} is not of type {column.type.python_type} (is {kwargs[key]})")
+                    self.set_column(key, kwargs[key])
 
         def __repr__(self):
             reprstr = getattr(type(self), '__reprstr__', f"<{type(self).__name__} {self.get_primary_key_value()}>")
             return reprstr.format_map(self.to_dict())
+
+        def set_column(self, column_name, value):
+            column = type(self).__table__.columns[column_name]
+            if isinstance(value, column.type.python_type) or value is None:
+                setattr(self, column_name, value)
+            else:
+                raise TypeError(f"{column_name} is not of type {column.type.python_type} (is {value})")
 
         def to_dict(self):
             d = {}
@@ -35,16 +38,13 @@ def create_base(model_base=None):
 
         def update(self, **kwargs):
             changes = {}
-            for key, column in type(self).__table__.columns.items():
-                assert isinstance(column, Column)
+            for key in type(self).__table__.columns.keys():
                 if key in kwargs:
-                    if isinstance(kwargs[key], column.type.python_type) or (kwargs[key] is None and column.nullable):
-                        oldval = getattr(self, key)
-                        if oldval != kwargs[key]:
-                            changes[key] = (oldval, kwargs[key])
-                            setattr(self, key, kwargs[key])
-                    else:
-                        raise TypeError(f"{key} is not of type {column.type.python_type} (is {kwargs[key]})")
+                    oldval = getattr(self, key)
+                    self.set_column(key, kwargs[key])
+                    newval = getattr(self, key)
+                    if oldval != newval:
+                        changes[key] = (oldval, newval)
             if changes:
                 self.query.filter_by(**{self.get_primary_key(): self.get_primary_key_value()})\
                     .update({k: v[1] for k, v in changes.items()})
